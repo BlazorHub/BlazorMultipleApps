@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices.ComTypes;
 
 namespace BlazorMultipleApps.Server
 {
@@ -44,8 +45,13 @@ namespace BlazorMultipleApps.Server
 
             app.UseHttpsRedirection();
 
-            app.MapWhen(ctx => ctx.Request.Path.StartsWithSegments("/FirstApp"), first =>
+            app.MapWhen(ctx => ctx.Request.Host.Equals("firstApp.com"), first =>
             {
+                first.Use((ctx, nxt) =>
+                {
+                    ctx.Request.Path = "/FirstApp" + ctx.Request.Path;
+                    return nxt();
+                });
                 first.UseBlazorFrameworkFiles("/FirstApp");
                 first.UseStaticFiles();
 
@@ -53,15 +59,20 @@ namespace BlazorMultipleApps.Server
                 first.UseEndpoints(endpoints =>
                 {
                     endpoints.MapControllers();
-                    endpoints.MapFallbackToFile("FirstApp/{*path:nonfile}", "FirstApp/index.html");
+                    endpoints.MapFallbackToFile("/FirstApp/{*path:nonfile}", "FirstApp/index.html");
                 });
             });
 
-            app.MapWhen(ctx => ctx.Request.Path.StartsWithSegments("/SecondApp"), second =>
+            app.MapWhen(ctx => ctx.Request.Host.Equals("SecondApp.com"), second =>
             {
+                second.Use((ctx, nxt) =>
+                {
+                    ctx.Request.Path = "/SecondApp" + ctx.Request.Path;
+                    return nxt();
+                });
                 second.UseBlazorFrameworkFiles("/SecondApp");
                 second.UseStaticFiles();
-            
+
                 second.UseRouting();
                 second.UseEndpoints(endpoints =>
                 {
